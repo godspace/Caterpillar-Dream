@@ -67,7 +67,6 @@
 
         .bottom-panel { flex-shrink: 0; display: flex; flex-direction: column; padding-top: 10px; }
 
-        /* Стили панели конфигурации */
         #config-panel {
             display: none;
             border: 1px dashed var(--text-color);
@@ -76,21 +75,13 @@
             font-size: 12px;
             background: rgba(0,0,0,0.8);
         }
-        .config-row {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 8px;
-        }
+        .config-row { display: flex; flex-direction: column; margin-bottom: 8px; }
         .config-row label { margin-bottom: 4px; opacity: 0.8; font-weight: bold; }
         select.terminal-select {
-            background: var(--bg-color);
-            color: var(--text-color);
-            border: 1px solid var(--text-color);
-            padding: 6px;
-            font-family: var(--font-stack);
-            font-size: 12px;
-            width: 100%;
-            outline: none;
+            background: var(--bg-color); color: var(--text-color);
+            border: 1px solid var(--text-color); padding: 6px;
+            font-family: var(--font-stack); font-size: 12px;
+            width: 100%; outline: none;
         }
         select.terminal-select.editor { color: var(--editor-color); border-color: var(--editor-color); }
         select.terminal-select.ai { color: var(--ai-color); border-color: var(--ai-color); }
@@ -109,9 +100,7 @@
 
         .status-bar { margin-top: 8px; font-size: 10px; opacity: 0.5; text-align: center; }
 
-        @media (max-width: 400px) {
-            .btn-terminal { font-size: 10px; padding: 10px 1px; }
-        }
+        @media (max-width: 400px) { .btn-terminal { font-size: 10px; padding: 10px 1px; } }
     </style>
 </head>
 <body>
@@ -183,7 +172,6 @@
             selAi: document.getElementById('select-ai')
         };
 
-        // Загрузка голосов в списки
         function populateVoiceLists() {
             availableVoices = synth.getVoices();
             if (availableVoices.length === 0) return;
@@ -191,7 +179,6 @@
             ui.selEditor.innerHTML = '';
             ui.selAi.innerHTML = '';
 
-            // Показываем русские голоса первыми
             const sortedVoices = [...availableVoices].sort((a, b) => {
                 const aRu = a.lang.includes('ru');
                 const bRu = b.lang.includes('ru');
@@ -212,7 +199,7 @@
                 ui.selAi.appendChild(option2);
             });
 
-            loadSavedVoices(); // Пытаемся загрузить сохраненный выбор
+            loadSavedVoices(); 
 
             ui.boot.style.display = 'none';
             ui.curBlock.style.display = 'block';
@@ -221,30 +208,43 @@
             ui.status.innerText = `SYS.STATUS: READY. VOICES LOADED.`;
         }
 
-        initVoices();
-        function initVoices() {
-            populateVoiceLists();
-        }
+        function initVoices() { populateVoiceLists(); }
         if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = initVoices;
 
-        // Сохранение и загрузка настроек из памяти браузера
         function loadSavedVoices() {
             const savedEd = localStorage.getItem('term_voice_editor');
             const savedAi = localStorage.getItem('term_voice_ai');
             
+            // Вспомогательная функция для поиска лучших Edge Natural голосов
+            const findBestVoice = (namesArray) => {
+                // Ищем голос, где есть совпадение по имени И пометка Natural/Online
+                let best = availableVoices.find(v => v.lang.includes('ru') && 
+                    (v.name.includes('Natural') || v.name.includes('Online')) && 
+                    namesArray.some(n => v.name.toLowerCase().includes(n)));
+                
+                // Если Natural нет, ищем просто по имени (для других браузеров)
+                if (!best) {
+                    best = availableVoices.find(v => v.lang.includes('ru') && 
+                        namesArray.some(n => v.name.toLowerCase().includes(n)));
+                }
+                return best;
+            };
+
+            // Установка Редактора
             if (savedEd && availableVoices.some(v => v.name === savedEd)) {
                 ui.selEditor.value = savedEd;
             } else {
-                // Автовыбор по умолчанию, если ничего не сохранено
-                const maleVoice = availableVoices.find(v => v.name.toLowerCase().includes('dmitry') || v.name.toLowerCase().includes('pavel')) || availableVoices.find(v => v.lang.includes('ru'));
+                const maleVoice = findBestVoice(['dmitry', 'pavel', 'yuri']) || availableVoices.find(v => v.lang.includes('ru'));
                 if (maleVoice) ui.selEditor.value = maleVoice.name;
             }
 
+            // Установка ИИ
             if (savedAi && availableVoices.some(v => v.name === savedAi)) {
                 ui.selAi.value = savedAi;
             } else {
-                // Автовыбор по умолчанию для ИИ
-                const femaleVoice = availableVoices.find(v => v.name.toLowerCase().includes('svetlana') || v.name.toLowerCase().includes('irina')) || availableVoices.find(v => v.lang.includes('ru') && v.name !== ui.selEditor.value) || availableVoices.find(v => v.lang.includes('ru'));
+                const femaleVoice = findBestVoice(['svetlana', 'irina', 'darina', 'milena']) || 
+                                    availableVoices.find(v => v.lang.includes('ru') && v.name !== ui.selEditor.value) || 
+                                    availableVoices.find(v => v.lang.includes('ru'));
                 if (femaleVoice) ui.selAi.value = femaleVoice.name;
             }
         }
@@ -252,22 +252,15 @@
         ui.selEditor.addEventListener('change', () => localStorage.setItem('term_voice_editor', ui.selEditor.value));
         ui.selAi.addEventListener('change', () => localStorage.setItem('term_voice_ai', ui.selAi.value));
 
-        // Логика UI конфигурации
         document.getElementById('btn-config').addEventListener('click', () => {
-            if (ui.configPanel.style.display === 'none' || ui.configPanel.style.display === '') {
-                ui.configPanel.style.display = 'block';
-            } else {
-                ui.configPanel.style.display = 'none';
-            }
+            ui.configPanel.style.display = (ui.configPanel.style.display === 'none' || ui.configPanel.style.display === '') ? 'block' : 'none';
         });
 
-        // Функция получения выбранного объекта голоса
         function getVoiceObject(role) {
             const voiceName = role === 'editor' ? ui.selEditor.value : ui.selAi.value;
             return availableVoices.find(v => v.name === voiceName) || availableVoices[0];
         }
 
-        // --- Анимация печати ---
         function startTyping(text) {
             clearInterval(typingInterval);
             ui.text.innerText = "";
@@ -289,7 +282,6 @@
             if (instantShow) ui.text.innerText = currentFullText;
         }
 
-        // --- Воспроизведение ---
         function playDialogue(index) {
             synth.cancel();
             clearTimeout(timeoutId);
@@ -318,10 +310,16 @@
             
             currentUtterance = new SpeechSynthesisUtterance(data.text);
             
-            // Назначаем голос из выбранных в настройках!
-            currentUtterance.voice = getVoiceObject(data.role);
+            const selectedVoice = getVoiceObject(data.role);
+            currentUtterance.voice = selectedVoice;
             currentUtterance.rate = cfgRate;
-            currentUtterance.pitch = cfgPitch;
+            
+            // Защита для Android: если браузер выдал Редактору и ИИ один и тот же голос
+            if (ui.selEditor.value === ui.selAi.value) {
+                currentUtterance.pitch = isEd ? 0.75 : 1.3;
+            } else {
+                currentUtterance.pitch = cfgPitch;
+            }
 
             currentUtterance.onend = () => {
                 if (isPlaying && !isPausedState) {
@@ -368,7 +366,7 @@
                 ui.status.innerText = "SYS.STATUS: RESUMING...";
                 playDialogue(currentIndex);
             } else if (!isPlaying) {
-                ui.configPanel.style.display = 'none'; // Прячем панель при старте
+                ui.configPanel.style.display = 'none'; 
                 playDialogue(currentIndex);
             }
         });
