@@ -185,11 +185,24 @@
             ui.text.innerText = 'СИСТЕМА ГОТОВА К ЗАПУСКУ.';
             ui.prefix.innerText = '> ';
 
-            const ruNat = voices.filter(v => v.lang.includes('ru') && (v.name.includes('Natural') || v.name.includes('Online')));
-            editorVoice = ruNat.find(v => v.name.includes('Dmitry')) || voices.find(v => v.lang.includes('ru'));
-            aiVoice = ruNat.find(v => !v.name.includes('Dmitry')) || voices.find(v => v.lang.includes('ru') && v !== editorVoice) || editorVoice;
+            // Отбираем все русские голоса
+            const ruVoices = voices.filter(v => v.lang.includes('ru') || v.lang === 'ru_RU');
             
-            ui.status.innerText = `SYS.STATUS: READY. VOICES: ${voices.length}`;
+            if (ruVoices.length > 0) {
+                // Словари для жесткого поиска
+                const maleNames = ['dmitry', 'pavel', 'yuri', 'boris', 'male'];
+                const femaleNames = ['svetlana', 'irina', 'milena', 'alena', 'victoria', 'female'];
+
+                // 1. Ищем Редактора (приоритет мужским голосам)
+                editorVoice = ruVoices.find(v => maleNames.some(name => v.name.toLowerCase().includes(name))) || ruVoices[0];
+
+                // 2. Ищем ИИ (приоритет женским голосам, затем любой отличный от Редактора)
+                aiVoice = ruVoices.find(v => femaleNames.some(name => v.name.toLowerCase().includes(name))) || 
+                          ruVoices.find(v => v.name !== editorVoice.name) || 
+                          editorVoice;
+            }
+
+            ui.status.innerText = `SYS.STATUS: READY. VOICES: ${ruVoices.length}`;
         }
 
         initVoices();
@@ -243,9 +256,17 @@
             startTyping(data.text);
             
             currentUtterance = new SpeechSynthesisUtterance(data.text);
+            
+            // Назначаем голоса
             currentUtterance.voice = isEd ? editorVoice : aiVoice;
             currentUtterance.rate = cfgRate;
-            currentUtterance.pitch = cfgPitch;
+            
+            // ANDROID FALLBACK: Если браузер выдал только 1 голос, искусственно разводим их по тональности
+            if (editorVoice && aiVoice && editorVoice.name === aiVoice.name) {
+                currentUtterance.pitch = isEd ? 0.75 : 1.3; // Мужской пониже, женский повыше
+            } else {
+                currentUtterance.pitch = cfgPitch;
+            }
 
             currentUtterance.onend = () => {
                 if (isPlaying && !isPausedState) {
@@ -311,5 +332,4 @@
 
     </script>
 </body>
-
 </html>
