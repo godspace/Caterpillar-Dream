@@ -6,7 +6,7 @@
     <title>Индиковый Транс - Глубокая Визуализация</title>
     <style>
         body {
-            background-color: #020205; /* Глубокий темный космос */
+            background-color: #020205; 
             color: #d3d3d3;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
@@ -18,66 +18,32 @@
             overflow: hidden;
         }
         #visualizer-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
         }
         #ui-container {
-            width: 80%;
-            max-width: 400px;
-            text-align: center;
-            z-index: 10; 
-            margin-bottom: 40px;
-            background: rgba(10, 10, 15, 0.6); 
-            padding: 25px;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            width: 80%; max-width: 400px; text-align: center;
+            z-index: 10; margin-bottom: 40px; background: rgba(10, 10, 15, 0.6); 
+            padding: 25px; border-radius: 20px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 10px 40px rgba(0,0,0,0.5);
             transition: opacity 2s ease;
         }
-        /* Скрываем интерфейс при глубоком погружении, если курсор не двигается */
-        body.immersed #ui-container {
-            opacity: 0.1;
-        }
-        body.immersed #ui-container:hover {
-            opacity: 1;
-        }
+        body.immersed #ui-container { opacity: 0.1; }
+        body.immersed #ui-container:hover { opacity: 1; }
         #text-source { display: none; }
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            align-items: center;
-        }
+        .controls { display: flex; flex-direction: column; gap: 15px; align-items: center; }
         select, button {
-            padding: 14px;
-            border-radius: 10px;
-            font-size: 1rem;
-            width: 100%;
-            outline: none;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s;
+            padding: 14px; border-radius: 10px; font-size: 1rem; width: 100%; outline: none;
+            border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s;
         }
-        select {
-            background: rgba(30, 30, 35, 0.9);
-            color: #fff;
-        }
+        select { background: rgba(30, 30, 35, 0.9); color: #fff; }
         button {
             background: linear-gradient(135deg, #1a1a24 0%, #2a2a3a 100%);
-            color: #fff;
-            cursor: pointer;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            font-weight: bold;
+            color: #fff; cursor: pointer; letter-spacing: 2px;
+            text-transform: uppercase; font-weight: bold;
         }
         button:hover {
             background: linear-gradient(135deg, #2a2a3a 0%, #3a3a5a 100%);
-            box-shadow: 0 0 20px rgba(100, 150, 255, 0.3);
-            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 0 20px rgba(100, 150, 255, 0.3); border-color: rgba(255,255,255,0.3);
         }
     </style>
 </head>
@@ -101,10 +67,13 @@
         const synth = window.speechSynthesis;
         const voiceSelect = document.getElementById('voiceSelect');
         const playBtn = document.getElementById('playBtn');
-        const textContent = document.getElementById('text-source').innerText;
+        
+        // Получаем текст и сразу разбиваем его на предложения по точкам
+        const rawText = document.getElementById('text-source').innerText;
+        const sentences = rawText.match(/[^.!?]+[.!?]+/g) || [rawText]; 
         
         let voices = [];
-        let keepAliveTimer; 
+        let currentSentenceIndex = 0; // Индекс текущего предложения
 
         function populateVoiceList() {
             voices = synth.getVoices().filter(v => v.lang.startsWith('ru'));
@@ -151,7 +120,7 @@
 
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512; 
-            analyser.smoothingTimeConstant = 0.85; // Плавность затухания частот (0.8 - 0.95)
+            analyser.smoothingTimeConstant = 0.85; 
             bufferLength = analyser.frequencyBinCount;
             dataArray = new Uint8Array(bufferLength);
 
@@ -170,24 +139,19 @@
             initCanvas();
         }
 
-        // --- Улучшенная настройка Canvas (Retina / High-DPI) ---
         function initCanvas() {
             canvas = document.getElementById('visualizer-canvas');
             canvasCtx = canvas.getContext('2d');
-            
             function resizeCanvas() {
                 const dpr = window.devicePixelRatio || 1;
-                WIDTH = window.innerWidth;
-                HEIGHT = window.innerHeight;
-                canvas.width = WIDTH * dpr;
-                canvas.height = HEIGHT * dpr;
+                WIDTH = window.innerWidth; HEIGHT = window.innerHeight;
+                canvas.width = WIDTH * dpr; canvas.height = HEIGHT * dpr;
                 canvasCtx.scale(dpr, dpr);
             }
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
         }
 
-        // --- ВЫСОКОКАЧЕСТВЕННАЯ ГЕНЕРАТИВНАЯ ГРАФИКА ---
         let hueOffset = 0; 
         let timeRotation = 0;
 
@@ -195,145 +159,98 @@
             drawVisualizerRequest = requestAnimationFrame(drawVisualizer);
             analyser.getByteFrequencyData(dataArray);
 
-            const centerX = WIDTH / 2;
-            const centerY = HEIGHT / 2;
+            const centerX = WIDTH / 2; const centerY = HEIGHT / 2;
             const maxRadius = Math.min(WIDTH, HEIGHT) / 2;
 
-            // 1. Очистка с эффектом затухания (Trails)
             canvasCtx.globalCompositeOperation = 'source-over';
-            canvasCtx.fillStyle = 'rgba(2, 2, 5, 0.15)'; // Очень темный сине-фиолетовый фон
+            canvasCtx.fillStyle = 'rgba(2, 2, 5, 0.15)'; 
             canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
-
-            // 2. Режим наложения для "Свечения"
             canvasCtx.globalCompositeOperation = 'lighter';
 
-            // Базовый бас для центрального пульса
             const bassEnergy = (dataArray[2] + dataArray[4] + dataArray[6]) / 3 / 255;
             const baseRadius = 40 + bassEnergy * 80; 
 
-            hueOffset += 0.2; // Медленная смена палитры
-            timeRotation += 0.001; // Очень медленное вращение всего узора
-
-            const segments = 10; // 10-лучевая мандала (можете поменять на 6, 8, 12)
+            hueOffset += 0.2; timeRotation += 0.001; 
+            const segments = 10; 
 
             for (let m = 0; m < segments; m++) {
                 canvasCtx.save();
                 canvasCtx.translate(centerX, centerY);
-                
-                // Вращаем каждый сегмент + общее медленное вращение
                 const angleOffset = (Math.PI * 2 / segments) * m;
                 canvasCtx.rotate(timeRotation + angleOffset);
-
-                // Отрисовка генеративных кривых для этого сегмента
                 canvasCtx.beginPath();
                 
-                // Цветовая гармония: немного сдвигаем цвет для каждого луча
                 const hue = (hueOffset + m * (360 / segments / 2)) % 360; 
                 canvasCtx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.6)`;
                 canvasCtx.lineWidth = 1.5 + bassEnergy; 
-                
-                // Мягкое свечение (отбирает FPS на слабых устройствах, но здесь выглядит волшебно)
                 canvasCtx.shadowBlur = 10;
                 canvasCtx.shadowColor = `hsla(${hue}, 100%, 50%, 0.5)`;
 
-                // Проходим по частотам, рисуя плавную кривую
-                // Берем не все точки, чтобы узор был более четким
-                let prevX = 0;
-                let prevY = baseRadius;
-
+                let prevX = 0; let prevY = baseRadius;
                 canvasCtx.moveTo(prevX, prevY);
 
-                const step = 4; // Шаг по массиву частот (сглаживание деталей)
+                const step = 4; 
                 for (let i = step; i < bufferLength - 20; i += step) {
                     const value = dataArray[i];
                     const percent = value / 255;
-                    
-                    // Расстояние от центра зависит от громкости частоты
                     const r = baseRadius + (percent * maxRadius * 0.7);
-                    
-                    // Угол внутри сегмента: растягиваем точки веером
-                    const theta = (i / bufferLength) * (Math.PI / 2); // Рисуем как бы "лепесток"
+                    const theta = (i / bufferLength) * (Math.PI / 2); 
+                    const x = r * Math.sin(theta); const y = r * Math.cos(theta);
 
-                    const x = r * Math.sin(theta);
-                    const y = r * Math.cos(theta);
-
-                    // Соединяем точки плавными квадратичными кривыми, а не прямыми линиями
-                    const cpX = (prevX + x) / 2;
-                    const cpY = (prevY + y) / 2;
+                    const cpX = (prevX + x) / 2; const cpY = (prevY + y) / 2;
                     canvasCtx.quadraticCurveTo(prevX, prevY, cpX, cpY);
-
-                    prevX = x;
-                    prevY = y;
+                    prevX = x; prevY = y;
                 }
                 
-                // Замыкаем кривую обратно к центру для формы лепестка
                 canvasCtx.quadraticCurveTo(prevX, prevY, 0, baseRadius * 1.5);
-                
-                canvasCtx.stroke();
-                canvasCtx.restore();
+                canvasCtx.stroke(); canvasCtx.restore();
             }
 
-            // --- Центральный источник (ядро сердцебиения) ---
             if (bassEnergy > 0.15) {
                 canvasCtx.beginPath();
                 canvasCtx.arc(centerX, centerY, baseRadius * 0.8, 0, 2 * Math.PI);
                 canvasCtx.fillStyle = `hsla(${hueOffset}, 100%, 70%, ${bassEnergy * 0.3})`;
                 canvasCtx.fill();
                 
-                // Второе кольцо для эффекта ударной волны
                 canvasCtx.beginPath();
                 canvasCtx.arc(centerX, centerY, baseRadius * 1.2 + (bassEnergy * 50), 0, 2 * Math.PI);
                 canvasCtx.strokeStyle = `hsla(${hueOffset + 180}, 80%, 60%, ${bassEnergy * 0.5})`;
-                canvasCtx.lineWidth = 2;
-                canvasCtx.stroke();
+                canvasCtx.lineWidth = 2; canvasCtx.stroke();
             }
         }
 
         // --- Аудио функции ---
         function startDrone() {
-            const osc1 = audioCtx.createOscillator();
-            const osc2 = audioCtx.createOscillator();
+            const osc1 = audioCtx.createOscillator(); const osc2 = audioCtx.createOscillator();
             const droneGain = audioCtx.createGain();
             osc1.type = 'sine'; osc1.frequency.value = 65.41; 
             osc2.type = 'triangle'; osc2.frequency.value = 66.5; 
             droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
             droneGain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 4);
             osc1.connect(droneGain); osc2.connect(droneGain);
-            droneGain.connect(masterGain);
-            osc1.start(); osc2.start();
+            droneGain.connect(masterGain); osc1.start(); osc2.start();
             return { osc1, osc2, droneGain };
         }
 
         function playSand(vol) {
-            const now = audioCtx.currentTime;
-            const bufSize = audioCtx.sampleRate * 4; 
+            const now = audioCtx.currentTime; const bufSize = audioCtx.sampleRate * 4; 
             const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-            const data = buf.getChannelData(0);
-            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+            const data = buf.getChannelData(0); for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
             const noise = audioCtx.createBufferSource(); noise.buffer = buf;
             const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(600, now);
-            filter.frequency.exponentialRampToValueAtTime(100, now + 4); 
-            const gain = audioCtx.createGain();
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(vol, now + 1.5); 
-            gain.gain.linearRampToValueAtTime(0, now + 4);
-            noise.connect(filter); filter.connect(gain);
-            gain.connect(delayNode); gain.connect(masterGain);
-            noise.start(now);
+            filter.frequency.setValueAtTime(600, now); filter.frequency.exponentialRampToValueAtTime(100, now + 4); 
+            const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(vol, now + 1.5); gain.gain.linearRampToValueAtTime(0, now + 4);
+            noise.connect(filter); filter.connect(gain); gain.connect(delayNode); gain.connect(masterGain); noise.start(now);
         }
 
         function playBell(vol) {
             const now = audioCtx.currentTime;
             [1, 1.42, 2.11].forEach((ratio, i) => {
-                const osc = audioCtx.createOscillator(); osc.type = 'sine';
-                osc.frequency.value = 90 * ratio; 
-                const gain = audioCtx.createGain();
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol / 3, now + 0.5); 
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 10 - i); 
-                osc.connect(gain); gain.connect(delayNode); gain.connect(masterGain);
-                osc.start(now); osc.stop(now + 10);
+                const osc = audioCtx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 90 * ratio; 
+                const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(vol / 3, now + 0.5); gain.gain.exponentialRampToValueAtTime(0.001, now + 10 - i); 
+                osc.connect(gain); gain.connect(delayNode); gain.connect(masterGain); osc.start(now); osc.stop(now + 10);
             });
         }
 
@@ -341,45 +258,28 @@
             if (!audioCtx) return;
             const now = audioCtx.currentTime;
             const beat = (time, accent) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(150, time);
-                osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
-                gain.gain.setValueAtTime(0, time);
-                gain.gain.linearRampToValueAtTime(vol * accent, time + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
-                osc.connect(gain);
-                gain.connect(masterGain);
-                osc.start(time);
-                osc.stop(time + 0.6);
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.setValueAtTime(150, time); osc.frequency.exponentialRampToValueAtTime(40, time + 0.1);
+                gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(vol * accent, time + 0.02); gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+                osc.connect(gain); gain.connect(masterGain); osc.start(time); osc.stop(time + 0.6);
             };
-            beat(now, 1.0);
-            beat(now + 0.35, 0.7); 
+            beat(now, 1.0); beat(now + 0.35, 0.7); 
         }
 
         function playRandomNote() {
             if (!isPlaying) return;
-            const osc = audioCtx.createOscillator();
-            const noteGain = audioCtx.createGain();
-            osc.frequency.value = scale[Math.floor(Math.random() * scale.length)];
-            osc.type = 'sine';
+            const osc = audioCtx.createOscillator(); const noteGain = audioCtx.createGain();
+            osc.frequency.value = scale[Math.floor(Math.random() * scale.length)]; osc.type = 'sine';
             const now = audioCtx.currentTime;
-            noteGain.gain.setValueAtTime(0, now);
-            noteGain.gain.linearRampToValueAtTime(0.08, now + 1.5); 
-            noteGain.gain.linearRampToValueAtTime(0, now + 6);    
-            osc.connect(noteGain);
-            noteGain.connect(masterGain); 
-            noteGain.connect(delayNode);  
-            osc.start(now);
-            osc.stop(now + 6);
+            noteGain.gain.setValueAtTime(0, now); noteGain.gain.linearRampToValueAtTime(0.08, now + 1.5); noteGain.gain.linearRampToValueAtTime(0, now + 6);    
+            osc.connect(noteGain); noteGain.connect(masterGain); noteGain.connect(delayNode);  
+            osc.start(now); osc.stop(now + 6);
             melodyTimeout = setTimeout(playRandomNote, Math.random() * 3000 + 2000);
         }
 
         // --- Управление ---
         function stopAll() {
             synth.cancel();
-            clearInterval(keepAliveTimer); 
             
             if (masterGain && audioCtx) masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1);
             
@@ -394,48 +294,48 @@
             playBtn.textContent = 'Начать погружение';
             isPlaying = false;
             
-            // --- ДОБАВЛЕНА ЭТА СТРОКА ДЛЯ ПЕРЕХОДА ---
+            // ПЕРЕХОД К ТЕРМИНАЛУ
             window.location.href = 'terminal.html';        
         }
 
         function gracefulStop() {
-            clearInterval(keepAliveTimer); 
             playBtn.textContent = 'Возвращение...';
             
             if (masterGain && audioCtx) {
                 masterGain.gain.setValueAtTime(masterGain.gain.value, audioCtx.currentTime);
                 masterGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 8);
             }
+            // Ждем 8 секунд затухания музыки, затем переходим
             setTimeout(stopAll, 8000);
         }
 
-        // Скрываем/показываем UI при движении мыши (для чистоты экрана)
-        let mouseTimer;
-        window.addEventListener('mousemove', () => {
-            if (isPlaying) {
-                document.body.classList.remove('immersed');
-                clearTimeout(mouseTimer);
-                mouseTimer = setTimeout(() => { document.body.classList.add('immersed'); }, 3000);
+        // --- Функция последовательного чтения предложений ---
+        function speakNextSentence() {
+            if (!isPlaying) return;
+            
+            // Если текст закончился, запускаем плавный выход
+            if (currentSentenceIndex >= sentences.length) {
+                gracefulStop();
+                return;
             }
-        });
 
-        playBtn.addEventListener('click', () => {
-            if (isPlaying) return stopAll();
+            const currentSentence = sentences[currentSentenceIndex].trim();
+            if (!currentSentence) {
+                currentSentenceIndex++;
+                return speakNextSentence(); // Пропускаем пустые строки
+            }
 
+            const utterThis = new SpeechSynthesisUtterance(currentSentence);
             const selectedVoice = voices.find(v => v.name === voiceSelect.selectedOptions[0].getAttribute('data-name'));
-            if (!selectedVoice) return;
-
-            sfxFlags = { sand: false, bell: false, heart: false };
-            currentHeartVol = 0.3; 
-
-            const utterThis = new SpeechSynthesisUtterance(textContent);
-            utterThis.voice = selectedVoice;
+            
+            if (selectedVoice) utterThis.voice = selectedVoice;
             utterThis.rate = 0.75;
             utterThis.pitch = 0.8;
 
+            // Обработка слов и эффектов внутри текущего предложения
             utterThis.onboundary = (event) => {
                 if (event.name === 'word') {
-                    const cleanWord = textContent.substring(event.charIndex, event.charIndex + event.charLength).toLowerCase().replace(/[^а-яё]/g, '');
+                    const cleanWord = currentSentence.substring(event.charIndex, event.charIndex + event.charLength).toLowerCase().replace(/[^а-яё]/g, '');
                     
                     if ((cleanWord === 'песок' || cleanWord === 'песочных') && !sfxFlags.sand) {
                         sfxFlags.sand = true;
@@ -458,20 +358,55 @@
                 }
             };
 
-            utterThis.onend = gracefulStop;
+            // Как только предложение дочитано - запускаем следующее
+            utterThis.onend = () => {
+                if (isPlaying) {
+                    currentSentenceIndex++;
+                    speakNextSentence();
+                }
+            };
+
+            // Подстраховка от сбоев движка
+            utterThis.onerror = (e) => {
+                console.error('TTS Error:', e);
+                if (isPlaying) {
+                    currentSentenceIndex++;
+                    speakNextSentence();
+                }
+            };
+
+            synth.speak(utterThis);
+        }
+
+        let mouseTimer;
+        window.addEventListener('mousemove', () => {
+            if (isPlaying) {
+                document.body.classList.remove('immersed');
+                clearTimeout(mouseTimer);
+                mouseTimer = setTimeout(() => { document.body.classList.add('immersed'); }, 3000);
+            }
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) return stopAll();
+
+            const selectedVoice = voices.find(v => v.name === voiceSelect.selectedOptions[0].getAttribute('data-name'));
+            if (!selectedVoice) return;
+
+            sfxFlags = { sand: false, bell: false, heart: false };
+            currentHeartVol = 0.3; 
+            currentSentenceIndex = 0; // Сбрасываем счетчик при новом старте
 
             initAudio();
             drawVisualizer();
 
             isPlaying = true;
-            document.body.classList.add('immersed'); // Прячем интерфейс через CSS
+            document.body.classList.add('immersed'); 
             startDrone();
             playRandomNote(); 
-            synth.speak(utterThis);
-
-            keepAliveTimer = setInterval(() => {
-                if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); }
-            }, 10000);
+            
+            // Запускаем цепную реакцию чтения предложений
+            speakNextSentence();
             
             playBtn.textContent = 'Остановить (Выход)';
         });
