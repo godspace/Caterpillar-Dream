@@ -35,13 +35,17 @@
         #title-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color); z-index: 75;
-            display: none; justify-content: center; align-items: center; overflow: hidden;
+            display: none; overflow: hidden;
         }
 
         #canvas-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 
         #title-text {
-            position: relative; z-index: 2;
+            /* Жесткое центрирование для любых экранов */
+            position: absolute; 
+            top: 50%; left: 50%;
+            width: 100%; text-align: center;
+            z-index: 2;
             font-family: 'Montserrat', sans-serif; 
             font-weight: 800;
             font-size: clamp(32px, 7vw, 90px);
@@ -51,11 +55,22 @@
             pointer-events: none; 
         }
 
+        /* Анимация для ПК */
         @keyframes cinematicTitle {
-            0%   { opacity: 0; filter: blur(15px); transform: scale(0.95); letter-spacing: 2px; }
-            10%  { opacity: 1; filter: blur(0px);  transform: scale(1);    letter-spacing: 8px; }  
-            75%  { opacity: 1; filter: blur(0px);  transform: scale(1.03); letter-spacing: 15px; } 
-            100% { opacity: 0; filter: blur(15px); transform: scale(1.06); letter-spacing: 25px; } 
+            0%   { opacity: 0; filter: blur(15px); transform: translate(-50%, -50%) scale(0.95); letter-spacing: 2px; }
+            10%  { opacity: 1; filter: blur(0px);  transform: translate(-50%, -50%) scale(1);    letter-spacing: 8px; margin-left: 4px; }  
+            75%  { opacity: 1; filter: blur(0px);  transform: translate(-50%, -50%) scale(1.03); letter-spacing: 15px; margin-left: 7px; } 
+            100% { opacity: 0; filter: blur(15px); transform: translate(-50%, -50%) scale(1.06); letter-spacing: 25px; margin-left: 12px; } 
+        }
+
+        /* Анимация для Смартфонов (меньше разъезд букв, идеальный центр) */
+        @media (max-width: 600px) {
+            @keyframes cinematicTitle {
+                0%   { opacity: 0; filter: blur(10px); transform: translate(-50%, -50%) scale(0.95); letter-spacing: 1px; }
+                10%  { opacity: 1; filter: blur(0px);  transform: translate(-50%, -50%) scale(1);    letter-spacing: 3px; margin-left: 1px;}  
+                75%  { opacity: 1; filter: blur(0px);  transform: translate(-50%, -50%) scale(1.03); letter-spacing: 6px; margin-left: 3px;} 
+                100% { opacity: 0; filter: blur(10px); transform: translate(-50%, -50%) scale(1.06); letter-spacing: 10px; margin-left: 5px;} 
+            }
         }
 
         /* --- СЦЕНА 2: Эпиграф --- */
@@ -196,7 +211,7 @@
         if (typeof dialogueData === 'undefined') { alert("Критическая ошибка: Файл dialogue.js не найден."); }
 
         let actx;
-        let bgMasterGain; // Глобальный контроль громкости фона
+        let bgMasterGain; 
         let isBgMuted = false;
         let userNickname = "EDITOR"; 
 
@@ -352,11 +367,10 @@
         // --- ЛОГИКА СЦЕН ---
         document.getElementById('btn-accept').addEventListener('click', () => {
             document.getElementById('init-screen').style.display = 'none';
-            document.getElementById('title-screen').style.display = 'flex';
+            document.getElementById('title-screen').style.display = 'block'; // Убрал flex, чтобы не конфликтовало с absolute
             
             actx = new (window.AudioContext || window.webkitAudioContext)(); actx.resume();
             
-            // Инициализация Мастер-шины для фонового звука
             bgMasterGain = actx.createGain();
             bgMasterGain.connect(actx.destination);
             bgMasterGain.gain.value = 1.0;
@@ -410,6 +424,7 @@
             synth.speak(u);
         }
 
+        // Обработка ввода никнейма и АВТОЗАПУСК
         document.getElementById('nickname-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault(); let val = this.value.trim(); if (val.length > 0) userNickname = val;
@@ -426,9 +441,25 @@
                 ui.curBlock.style.display = 'block'; ui.prefix.className = 'role-prefix role-ai'; ui.prefix.innerText = 'AI_CORE>';
                 startTyping(grantTextVisual);
 
-                let u2 = new SpeechSynthesisUtterance(grantTextSpeech); u2.voice = getVoiceObject('ai'); u2.rate = cfgRate; u.volume = cfgVolume;
+                // Произносим "Доступ разрешен" и затем автоматически запускаем чтение первого файла
+                let u2 = new SpeechSynthesisUtterance(grantTextSpeech); 
+                u2.voice = getVoiceObject('ai'); 
+                u2.rate = cfgRate; 
+                u2.volume = cfgVolume; // Исправлена опечатка здесь!
                 if (ui.selEditor.value === ui.selAi.value) u2.pitch = 1.3; else u2.pitch = cfgPitch;
-                u2.onend = () => { setTimeout(() => playDialogue(0), 800); }; synth.speak(u2);
+                
+                u2.onend = () => {
+                    // Автоматически запускаем диалог
+                    setTimeout(() => playDialogue(0), 400); 
+                };
+                
+                u2.onerror = (evt) => {
+                    // Если вдруг движок сбойнет, всё равно запускаем
+                    console.error("Ошибка озвучки доступа:", evt);
+                    setTimeout(() => playDialogue(0), 400);
+                }
+
+                synth.speak(u2);
             }
         });
 
@@ -436,7 +467,6 @@
         document.getElementById('btn-mute-bg').addEventListener('click', (e) => {
             isBgMuted = !isBgMuted;
             if (bgMasterGain) {
-                // Плавное затухание за 0.5 сек, чтобы избежать щелчка
                 bgMasterGain.gain.setTargetAtTime(isBgMuted ? 0 : 1, actx.currentTime, 0.1);
             }
             e.target.innerText = isBgMuted ? "[ 🔈 BG: OFF ]" : "[ 🔊 BG: ON ]";
@@ -509,7 +539,11 @@
         function playDialogue(index) {
             synth.cancel(); clearTimeout(timeoutId); stopTyping();
             if (index >= dialogueData.length) { resetState(''); return; }
-            isPlaying = true; isPausedState = false; ui.btnStart.innerText = "[ ► EXEC ]"; ui.status.innerText = `SYS.STATUS: RUNNING (${index + 1}/${dialogueData.length})`;
+            
+            isPlaying = true; isPausedState = false; 
+            ui.btnStart.innerText = "[ ► EXEC ]"; 
+            ui.status.innerText = `SYS.STATUS: RUNNING (${index + 1}/${dialogueData.length})`;
+            
             const data = dialogueData[index]; const isEd = data.role === 'editor';
             const processedText = data.text.replace(/Редактор/gi, userNickname);
 
