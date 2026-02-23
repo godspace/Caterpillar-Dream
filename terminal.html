@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Terminal Reader // EDITOR vs AI</title>
+    <title>Сон гусеницы // EDITOR vs AI</title>
     <script src="dialogue.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #080808;
+            --bg-color: #030305; 
             --terminal-color: #ffb000; 
             --text-color: var(--terminal-color); 
             --editor-color: #00d2ff;
@@ -19,21 +20,45 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: var(--font-stack);
-            margin: 0;
-            padding: 10px;
-            height: 100dvh; 
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden; 
+            margin: 0; padding: 10px; height: 100dvh; 
+            box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; 
         }
 
+        /* --- СЦЕНА 1: Инициализация --- */
         #init-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color); z-index: 100;
             display: flex; justify-content: center; align-items: center;
         }
 
+        /* --- СЦЕНА 1.5: Заставка (Нейросеть + Бабочка) --- */
+        #title-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 75;
+            display: none; justify-content: center; align-items: center; overflow: hidden;
+        }
+
+        #canvas-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+        #title-text {
+            position: relative; z-index: 2;
+            font-family: 'Montserrat', sans-serif; 
+            font-weight: 800;
+            font-size: clamp(32px, 7vw, 90px);
+            color: #ffffff; text-transform: uppercase;
+            text-shadow: 0 0 15px rgba(255,255,255,0.3), 0 0 40px rgba(0, 210, 255, 0.5);
+            animation: cinematicTitle 8s ease-in-out forwards;
+            pointer-events: none; 
+        }
+
+        @keyframes cinematicTitle {
+            0%   { opacity: 0; filter: blur(15px); transform: scale(0.95); letter-spacing: 2px; }
+            10%  { opacity: 1; filter: blur(0px);  transform: scale(1);    letter-spacing: 8px; }  
+            75%  { opacity: 1; filter: blur(0px);  transform: scale(1.03); letter-spacing: 15px; } 
+            100% { opacity: 0; filter: blur(15px); transform: scale(1.06); letter-spacing: 25px; } 
+        }
+
+        /* --- СЦЕНА 2: Эпиграф --- */
         #epigraph-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color); z-index: 50;
@@ -42,29 +67,20 @@
         }
 
         #epigraph-text {
-            font-size: clamp(20px, 6vw, 36px); 
-            line-height: 1.5;
-            margin-bottom: 40px;
-            white-space: pre-wrap;
-            opacity: 0.9;
-            max-width: 900px;
-            text-shadow: 0 0 8px rgba(255, 176, 0, 0.4);
-            font-weight: bold;
+            font-size: clamp(20px, 6vw, 36px); line-height: 1.5; margin-bottom: 40px;
+            white-space: pre-wrap; opacity: 0.9; max-width: 900px;
+            text-shadow: 0 0 8px rgba(255, 176, 0, 0.4); font-weight: bold;
         }
 
+        /* --- СЦЕНА 3: Терминал --- */
         #terminal-wrapper {
-            display: none; 
-            flex-direction: column;
-            width: 100%; height: 100%;
-            animation: fadeIn 1.5s ease-in;
+            display: none; flex-direction: column; width: 100%; height: 100%; animation: fadeIn 1.5s ease-in;
         }
 
         #terminal-container {
-            flex-grow: 1; min-height: 0; 
-            border: 1px solid var(--text-color); padding: 15px;
+            flex-grow: 1; min-height: 0; border: 1px solid var(--text-color); padding: 15px;
             overflow-y: auto; background-color: rgba(0,0,0,0.6);
-            box-shadow: inset 0 0 10px rgba(var(--terminal-color), 0.1);
-            display: flex; flex-direction: column; font-size: 14px;
+            box-shadow: inset 0 0 10px rgba(var(--terminal-color), 0.1); display: flex; flex-direction: column; font-size: 14px;
         }
 
         #terminal-container::-webkit-scrollbar { width: 4px; }
@@ -72,87 +88,59 @@
         #terminal-container::-webkit-scrollbar-thumb { background: var(--text-color); }
 
         .history-line { margin-bottom: 10px; line-height: 1.4; opacity: 0.6; }
-        
-        .current-line-container {
-            margin-top: 15px; margin-bottom: 15px;
-            font-size: 1.1em; font-weight: bold;
-            text-shadow: 0 0 2px var(--text-color); min-height: 1.4em;
-        }
+        .current-line-container { margin-top: 15px; margin-bottom: 15px; font-size: 1.1em; font-weight: bold; text-shadow: 0 0 2px var(--text-color); min-height: 1.4em; }
 
         .role-prefix { font-weight: bold; margin-right: 8px; letter-spacing: 0.5px; }
         .role-editor { color: var(--editor-color); text-shadow: 0 0 4px var(--editor-color); text-transform: uppercase;}
         .role-ai { color: var(--ai-color); text-shadow: 0 0 4px var(--ai-color); }
 
-        .cursor {
-            display: inline-block; width: 8px; height: 1.1em;
-            background-color: var(--text-color);
-            animation: blink 1s step-end infinite;
-            vertical-align: text-bottom; margin-left: 2px;
-        }
+        .cursor { display: inline-block; width: 8px; height: 1.1em; background-color: var(--text-color); animation: blink 1s step-end infinite; vertical-align: text-bottom; margin-left: 2px; }
 
-        /* Поле ввода никнейма */
-        #login-block {
-            display: none;
-            margin-top: 10px;
-            font-size: 1.1em;
-            font-weight: bold;
-        }
-        
-        #nickname-input {
-            background: transparent; border: none;
-            color: var(--editor-color); font-family: var(--font-stack);
-            font-size: 1em; font-weight: bold; outline: none;
-            width: 200px; text-shadow: 0 0 4px var(--editor-color);
-            text-transform: uppercase;
-        }
+        #login-block { display: none; margin-top: 10px; font-size: 1.1em; font-weight: bold; }
+        #nickname-input { background: transparent; border: none; color: var(--editor-color); font-family: var(--font-stack); font-size: 1em; font-weight: bold; outline: none; width: 200px; text-shadow: 0 0 4px var(--editor-color); text-transform: uppercase; }
 
         @keyframes blink { 50% { opacity: 0; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .bottom-panel { flex-shrink: 0; display: none; flex-direction: column; padding-top: 10px; }
 
-        #config-panel {
-            display: none; border: 1px dashed var(--text-color);
-            padding: 10px; margin-bottom: 10px; font-size: 12px; background: rgba(0,0,0,0.8);
-        }
-        .config-row { display: flex; flex-direction: column; margin-bottom: 8px; }
-        .config-row label { margin-bottom: 4px; opacity: 0.8; font-weight: bold; }
-        select.terminal-select {
-            background: var(--bg-color); color: var(--text-color);
-            border: 1px solid var(--text-color); padding: 6px;
-            font-family: var(--font-stack); font-size: 12px; width: 100%; outline: none;
-        }
+        /* Конфиг и Ползунки */
+        #config-panel { display: none; border: 1px dashed var(--text-color); padding: 15px; margin-bottom: 10px; font-size: 12px; background: rgba(0,0,0,0.8); }
+        .config-row { display: flex; flex-direction: column; margin-bottom: 12px; }
+        .config-row label { margin-bottom: 6px; opacity: 0.9; font-weight: bold; display: flex; justify-content: space-between; }
+        
+        select.terminal-select { background: var(--bg-color); color: var(--text-color); border: 1px solid var(--text-color); padding: 6px; font-family: var(--font-stack); font-size: 12px; width: 100%; outline: none; }
         select.terminal-select.editor { color: var(--editor-color); border-color: var(--editor-color); }
         select.terminal-select.ai { color: var(--ai-color); border-color: var(--ai-color); }
 
-        .controls { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin: 5px 0; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 1px; background: #444; border-bottom: 1px dashed var(--text-color); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 8px; background: var(--text-color); cursor: pointer; margin-top: -6px; }
 
-        .btn-terminal {
-            flex: 1; min-width: 22%;
-            background: transparent; border: 1px solid var(--text-color);
-            color: var(--text-color); padding: 12px 2px; 
-            font-family: var(--font-stack); font-weight: bold; font-size: 12px;
-            cursor: pointer; text-transform: uppercase; touch-action: manipulation; 
-            transition: all 0.2s;
-        }
+        /* Кнопки */
+        .controls { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+        .btn-terminal { flex: 1; min-width: 28%; background: transparent; border: 1px solid var(--text-color); color: var(--text-color); padding: 12px 2px; font-family: var(--font-stack); font-weight: bold; font-size: 12px; cursor: pointer; text-transform: uppercase; touch-action: manipulation; transition: all 0.2s; }
         .btn-terminal:active { background: var(--text-color); color: var(--bg-color); }
-        
-        .btn-large { 
-            flex: none; font-size: 14px; padding: 12px 30px; 
-            margin-top: 20px; animation: pulse 2s infinite; 
-            letter-spacing: 1px;
-        }
+        .btn-large { flex: none; font-size: 14px; padding: 12px 30px; margin-top: 20px; animation: pulse 2s infinite; letter-spacing: 1px; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 176, 0, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 176, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 176, 0, 0); } }
 
         .status-bar { margin-top: 8px; font-size: 10px; opacity: 0.5; text-align: center; }
 
-        @media (max-width: 400px) { .btn-terminal { font-size: 10px; padding: 10px 1px; } }
+        @media (max-width: 400px) { 
+            .btn-terminal { font-size: 10px; padding: 10px 1px; min-width: 45%; } 
+        }
     </style>
 </head>
 <body>
 
     <div id="init-screen">
         <button id="btn-accept" class="btn-terminal btn-large">[ ПРИНЯТЬ ПЕРЕДАЧУ ]</button>
+    </div>
+
+    <div id="title-screen">
+        <canvas id="canvas-layer"></canvas>
+        <div id="title-text">Сон гусеницы</div>
     </div>
 
     <div id="epigraph-screen">
@@ -163,22 +151,26 @@
     <div id="terminal-wrapper">
         <div id="terminal-container">
             <div id="history-output"></div>
-            
             <div class="current-line-container" id="current-line-block" style="display: none;">
                 <span id="current-role-prefix" class="role-prefix"></span>
                 <span id="current-text-content"></span><span class="cursor"></span>
             </div>
-
             <div id="login-block">
                 <span class="role-prefix role-editor" id="dynamic-user-prompt">USER_></span>
                 <input type="text" id="nickname-input" autocomplete="off" maxlength="15" placeholder="введите имя...">
                 <span class="cursor"></span>
             </div>
-
         </div>
 
         <div class="bottom-panel" id="bottom-panel">
             <div id="config-panel">
+                <div class="config-row">
+                    <label style="color: var(--text-color)">
+                        <span>[VOL] ГРОМКОСТЬ ГОЛОСА:</span>
+                        <span id="val-vol">100%</span>
+                    </label>
+                    <input type="range" id="param-vol" min="0" max="1" step="0.1" value="1.0">
+                </div>
                 <div class="config-row">
                     <label style="color: var(--editor-color)">[ED] USER VOICE (MALE):</label>
                     <select id="select-editor" class="terminal-select editor"></select>
@@ -193,6 +185,7 @@
                 <button id="btn-start" class="btn-terminal">[ ► EXEC ]</button>
                 <button id="btn-pause" class="btn-terminal">[ ❚❚ PAUSE ]</button>
                 <button id="btn-reset" class="btn-terminal">[ ■ RESET ]</button>
+                <button id="btn-mute-bg" class="btn-terminal">[ 🔊 BG: ON ]</button>
                 <button id="btn-config" class="btn-terminal">[ ⚙ CONFIG ]</button>
             </div>
             <div class="status-bar" id="status-bar">SYS.STATUS: STANDBY</div>
@@ -200,219 +193,285 @@
     </div>
 
     <script>
-        if (typeof dialogueData === 'undefined') {
-            alert("Критическая ошибка: Файл dialogue.js не найден.");
-        }
+        if (typeof dialogueData === 'undefined') { alert("Критическая ошибка: Файл dialogue.js не найден."); }
 
         let actx;
-        let userNickname = "EDITOR"; // По умолчанию, если ничего не введут
+        let bgMasterGain; // Глобальный контроль громкости фона
+        let isBgMuted = false;
+        let userNickname = "EDITOR"; 
 
-        // --- ГЕНЕРАТИВНЫЙ ЗВУК ПЕЧАТИ ---
-        function playTickSound() {
-            if (!actx || actx.state === 'suspended') return;
-            const osc = actx.createOscillator();
-            const gain = actx.createGain();
-            const filter = actx.createBiquadFilter();
+        // --- ВИЗУАЛИЗАЦИЯ: НЕЙРОСЕТЬ СБИРАЕТСЯ В БАБОЧКУ ---
+        let visualAnimId;
+        function startVisuals() {
+            const canvas = document.getElementById('canvas-layer');
+            const ctx = canvas.getContext('2d');
+            let width, height;
 
-            osc.type = 'square'; 
-            osc.frequency.setValueAtTime(1000 + Math.random() * 500, actx.currentTime); 
+            function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+            window.addEventListener('resize', resize); resize();
 
-            filter.type = 'lowpass'; filter.frequency.value = 3500;
-            gain.gain.setValueAtTime(0.015, actx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.02);
+            const targetPoints = [];
+            const scale = Math.min(width, height) * 0.08;
+            const centerX = width / 2;
+            const centerY = height / 2 + scale;
 
-            osc.connect(filter); filter.connect(gain); gain.connect(actx.destination);
-            osc.start(); osc.stop(actx.currentTime + 0.03);
+            for (let t = 0; t < Math.PI * 16; t += 0.1) {
+                let e = Math.exp(Math.cos(t)) - 2 * Math.cos(4*t) - Math.pow(Math.sin(t/12), 5);
+                let x = Math.sin(t) * e; let y = -Math.cos(t) * e; 
+                targetPoints.push({ x: centerX + x * scale, y: centerY + y * scale });
+            }
+
+            const numNodes = 400; const nodes = [];
+            for (let i = 0; i < numNodes; i++) {
+                let isButterflyNode = i < targetPoints.length;
+                let target = isButterflyNode ? targetPoints[i] : null;
+                nodes.push({
+                    rx: Math.random() * width, ry: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 1.5, vy: (Math.random() - 0.5) * 1.5,
+                    x: 0, y: 0, target: target, isButterfly: isButterflyNode, dissolving: false 
+                });
+            }
+
+            let startTime = performance.now();
+
+            function draw(now) {
+                let elapsed = now - startTime;
+                let assemblePhase = Math.max(0, Math.min(1, (elapsed - 1000) / 1500)); 
+                let easeAssemble = assemblePhase < 0.5 ? 2 * assemblePhase * assemblePhase : 1 - Math.pow(-2 * assemblePhase + 2, 2) / 2;
+                let dissolvePhase = Math.max(0, Math.min(1, (elapsed - 3500) / 1000)); 
+                let bgDimPhase = Math.max(0, Math.min(1, (elapsed - 4000) / 1000)); 
+
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = `rgba(3, 3, 5, 0.4)`; ctx.fillRect(0, 0, width, height);
+                ctx.globalCompositeOperation = 'lighter';
+
+                let globalAlpha = 1 - (bgDimPhase * 1); 
+
+                for (let i = 0; i < nodes.length; i++) {
+                    let p = nodes[i];
+
+                    if (dissolvePhase > 0 && p.isButterfly && !p.dissolving) {
+                        p.dissolving = true;
+                        let angle = Math.atan2(p.y - centerY, p.x - centerX);
+                        let speed = Math.random() * 2 + 0.5;
+                        p.vx = Math.cos(angle) * speed; p.vy = Math.sin(angle) * speed;
+                        p.rx = p.x; p.ry = p.y;
+                    }
+
+                    if (p.dissolving) {
+                        p.rx += p.vx; p.ry += p.vy; p.x = p.rx; p.y = p.ry;
+                    } else if (p.isButterfly) {
+                        p.rx += p.vx * 0.2; p.ry += p.vy * 0.2;
+                        p.x = p.rx * (1 - easeAssemble) + p.target.x * easeAssemble;
+                        p.y = p.ry * (1 - easeAssemble) + p.target.y * easeAssemble;
+                    } else {
+                        p.rx += p.vx; p.ry += p.vy; p.x = p.rx; p.y = p.ry;
+                    }
+
+                    if (p.rx < 0 || p.rx > width) p.vx *= -1;
+                    if (p.ry < 0 || p.ry > height) p.vy *= -1;
+
+                    let nodeAlpha = p.isButterfly ? (0.3 + easeAssemble*0.7 - dissolvePhase) : 0.3;
+                    nodeAlpha *= globalAlpha; if (nodeAlpha < 0) nodeAlpha = 0;
+
+                    if (nodeAlpha > 0.01) { 
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.isButterfly ? 1.5 : 1, 0, Math.PI * 2);
+                        ctx.fillStyle = p.isButterfly && easeAssemble > 0.1 ? `rgba(255, 176, 0, ${nodeAlpha})` : `rgba(0, 210, 255, ${nodeAlpha})`;
+                        ctx.fill();
+
+                        for (let j = i + 1; j < nodes.length; j++) {
+                            let p2 = nodes[j]; let dx = p.x - p2.x; let dy = p.y - p2.y; let dist = dx*dx + dy*dy;
+                            let connectDist = p.isButterfly && p2.isButterfly && easeAssemble > 0.5 ? 2500 : 7000;
+                            if (dist < connectDist) {
+                                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y);
+                                let lineAlpha = (1 - dist/connectDist) * nodeAlpha * 0.6;
+                                ctx.strokeStyle = p.isButterfly && p2.isButterfly && easeAssemble > 0.1 ? `rgba(255, 176, 0, ${lineAlpha})` : `rgba(0, 210, 255, ${lineAlpha})`;
+                                ctx.lineWidth = p.isButterfly && p2.isButterfly && easeAssemble > 0.8 ? 1.2 : 0.5;
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                }
+
+                if (elapsed < 5000) { visualAnimId = requestAnimationFrame(draw); } 
+                else { ctx.clearRect(0, 0, width, height); }
+            }
+            visualAnimId = requestAnimationFrame(draw);
         }
 
-        // --- ЛЕГКИЙ АТМОСФЕРНЫЙ ГУЛ (Тихая серверная) ---
+        // --- ГЕНЕРАТИВНЫЕ ЗВУКИ ---
+        function playTitleCinematicSound() {
+            if (!actx || actx.state === 'suspended') return;
+            const t = actx.currentTime;
+
+            const subOsc = actx.createOscillator(); const subGain = actx.createGain();
+            subOsc.type = 'sine'; subOsc.frequency.setValueAtTime(100, t); subOsc.frequency.exponentialRampToValueAtTime(10, t + 4); 
+            subGain.gain.setValueAtTime(0, t); subGain.gain.linearRampToValueAtTime(1, t + 0.1); subGain.gain.exponentialRampToValueAtTime(0.001, t + 5); 
+            subOsc.connect(subGain); subGain.connect(actx.destination); subOsc.start(t); subOsc.stop(t + 5);
+
+            const riserOsc = actx.createOscillator(); const riserFilter = actx.createBiquadFilter(); const riserGain = actx.createGain();
+            riserOsc.type = 'sawtooth'; riserOsc.frequency.setValueAtTime(50, t); riserOsc.frequency.exponentialRampToValueAtTime(200, t + 4);
+            riserFilter.type = 'lowpass'; riserFilter.frequency.setValueAtTime(100, t); riserFilter.frequency.exponentialRampToValueAtTime(3000, t + 3.5);
+            riserGain.gain.setValueAtTime(0, t); riserGain.gain.linearRampToValueAtTime(0.2, t + 2); riserGain.gain.exponentialRampToValueAtTime(0.001, t + 4.5);
+            riserOsc.connect(riserFilter); riserFilter.connect(riserGain); riserGain.connect(actx.destination); riserOsc.start(t); riserOsc.stop(t + 5);
+
+            const bufferSize = actx.sampleRate * 4; const noiseBuffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
+            const output = noiseBuffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+            const noiseSrc = actx.createBufferSource(); noiseSrc.buffer = noiseBuffer;
+            const noiseFilter = actx.createBiquadFilter(); const noiseGain = actx.createGain();
+            noiseFilter.type = 'bandpass'; noiseFilter.frequency.setValueAtTime(400, t); noiseFilter.frequency.exponentialRampToValueAtTime(6000, t + 3); noiseFilter.Q.value = 1;
+            noiseGain.gain.setValueAtTime(0, t); noiseGain.gain.linearRampToValueAtTime(0.5, t + 2); noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 5);
+            noiseSrc.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(actx.destination); noiseSrc.start(t);
+        }
+
+        function playTickSound() {
+            if (!actx || actx.state === 'suspended') return;
+            const osc = actx.createOscillator(); const gain = actx.createGain(); const filter = actx.createBiquadFilter();
+            osc.type = 'square'; osc.frequency.setValueAtTime(1000 + Math.random() * 500, actx.currentTime); 
+            filter.type = 'lowpass'; filter.frequency.value = 3500;
+            gain.gain.setValueAtTime(0.015, actx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.02);
+            osc.connect(filter); filter.connect(gain); gain.connect(actx.destination); osc.start(); osc.stop(actx.currentTime + 0.03);
+        }
+
         function startQuietServerHum() {
             if (!actx || actx.state === 'suspended') return;
             
-            const humOsc = actx.createOscillator();
-            const humGain = actx.createGain();
+            const humOsc = actx.createOscillator(); const humGain = actx.createGain();
             humOsc.type = 'sine'; humOsc.frequency.value = 80.0; 
+            humGain.gain.setValueAtTime(0, actx.currentTime); humGain.gain.linearRampToValueAtTime(0.015, actx.currentTime + 3); 
+            humOsc.connect(humGain); humGain.connect(bgMasterGain); humOsc.start();
 
-            humGain.gain.setValueAtTime(0, actx.currentTime);
-            humGain.gain.linearRampToValueAtTime(0.015, actx.currentTime + 3); 
-
-            humOsc.connect(humGain); humGain.connect(actx.destination); humOsc.start();
-
-            const bufferSize = actx.sampleRate * 2; 
-            const noiseBuffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
-            const output = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
-
-            const noiseSource = actx.createBufferSource();
-            noiseSource.buffer = noiseBuffer; noiseSource.loop = true;
-
-            const noiseFilter = actx.createBiquadFilter();
-            noiseFilter.type = 'lowpass'; noiseFilter.frequency.value = 350; 
-
-            const noiseGain = actx.createGain();
-            noiseGain.gain.setValueAtTime(0, actx.currentTime);
-            noiseGain.gain.linearRampToValueAtTime(0.02, actx.currentTime + 4);
-
-            noiseSource.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(actx.destination);
-            noiseSource.start();
+            const bufferSize = actx.sampleRate * 2; const noiseBuffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
+            const output = noiseBuffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+            const noiseSource = actx.createBufferSource(); noiseSource.buffer = noiseBuffer; noiseSource.loop = true;
+            const noiseFilter = actx.createBiquadFilter(); noiseFilter.type = 'lowpass'; noiseFilter.frequency.value = 350; 
+            const noiseGain = actx.createGain(); noiseGain.gain.setValueAtTime(0, actx.currentTime); noiseGain.gain.linearRampToValueAtTime(0.02, actx.currentTime + 4);
+            noiseSource.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(bgMasterGain); noiseSource.start();
         }
 
-        // --- ЛОГИКА ЭПИГРАФА ---
-        const epigraphText = "- So when maybe you or somebody else creates an AGI system, and you get to ask her one question, what would that question be?\n- What's outside the simulation?\n\nИлон Маск в интервью Лексу Фридману";
-        
+        // --- ЛОГИКА СЦЕН ---
         document.getElementById('btn-accept').addEventListener('click', () => {
             document.getElementById('init-screen').style.display = 'none';
-            document.getElementById('epigraph-screen').style.display = 'flex';
+            document.getElementById('title-screen').style.display = 'flex';
             
-            actx = new (window.AudioContext || window.webkitAudioContext)();
-            actx.resume();
+            actx = new (window.AudioContext || window.webkitAudioContext)(); actx.resume();
             
-            startQuietServerHum(); 
-            startEpigraphSequence();
+            // Инициализация Мастер-шины для фонового звука
+            bgMasterGain = actx.createGain();
+            bgMasterGain.connect(actx.destination);
+            bgMasterGain.gain.value = 1.0;
+
+            playTitleCinematicSound(); 
+            startVisuals(); 
+            
+            setTimeout(() => {
+                document.getElementById('title-screen').style.display = 'none';
+                document.getElementById('epigraph-screen').style.display = 'flex';
+                startQuietServerHum(); startEpigraphSequence();
+            }, 8000);
         });
 
+        const epigraphText = "- So when maybe you or somebody else creates an AGI system, and you get to ask her one question, what would that question be?\n- What's outside the simulation?\n\nИлон Маск в интервью Лексу Фридману";
         function startEpigraphSequence() {
-            const epigraphDiv = document.getElementById('epigraph-text');
-            let i = 0; let textSoFar = "";
-            
+            const epigraphDiv = document.getElementById('epigraph-text'); let i = 0; let textSoFar = "";
             let epiInterval = setInterval(() => {
                 if (i < epigraphText.length) {
-                    const char = epigraphText.charAt(i);
-                    textSoFar += char;
+                    const char = epigraphText.charAt(i); textSoFar += char;
                     epigraphDiv.innerHTML = textSoFar + '<span class="cursor"></span>';
-                    if (char !== ' ' && char !== '\n') playTickSound();
-                    i++;
+                    if (char !== ' ' && char !== '\n') playTickSound(); i++;
                 } else {
-                    clearInterval(epiInterval);
-                    setTimeout(() => { document.getElementById('btn-start-terminal').style.display = 'block'; }, 1000); 
+                    clearInterval(epiInterval); setTimeout(() => { document.getElementById('btn-start-terminal').style.display = 'block'; }, 1000); 
                 }
             }, 12); 
         }
 
-        // --- ПЕРЕХОД К ТЕРМИНАЛУ И ИДЕНТИФИКАЦИЯ ---
+        // --- ПЕРЕХОД К ТЕРМИНАЛУ ---
         document.getElementById('btn-start-terminal').addEventListener('click', () => {
             document.getElementById('epigraph-screen').style.display = 'none';
             document.getElementById('terminal-wrapper').style.display = 'flex';
             
-            let unlockUtterance = new SpeechSynthesisUtterance('');
-            unlockUtterance.volume = 0;
-            synth.speak(unlockUtterance);
-
-            initVoices(); 
-            setTimeout(startAuthSequence, 600);
+            let unlockUtterance = new SpeechSynthesisUtterance(''); unlockUtterance.volume = 0; synth.speak(unlockUtterance);
+            initVoices(); setTimeout(startAuthSequence, 600);
         });
 
         function startAuthSequence() {
-            ui.curBlock.style.display = 'block';
-            ui.prefix.className = 'role-prefix role-ai';
-            ui.prefix.innerText = 'AI_CORE>';
-            
+            ui.curBlock.style.display = 'block'; ui.prefix.className = 'role-prefix role-ai'; ui.prefix.innerText = 'AI_CORE>';
             const authTextVisual = "ТРЕБУЕТСЯ ИДЕНТИФИКАЦИЯ СЕССИИ. ВВЕДИТЕ ПОЗЫВНОЙ.";
             const authTextSpeech = "Требуется идентификация сессии. Пожалуйста, введите позывной.";
-            
             startTyping(authTextVisual);
             
             let u = new SpeechSynthesisUtterance(authTextSpeech);
-            u.voice = getVoiceObject('ai');
-            u.rate = cfgRate; 
+            u.voice = getVoiceObject('ai'); u.rate = cfgRate; u.volume = cfgVolume;
             if (ui.selEditor.value === ui.selAi.value) u.pitch = 1.3; else u.pitch = cfgPitch;
-
             u.onend = () => {
                 document.getElementById('login-block').style.display = 'block';
-                const input = document.getElementById('nickname-input');
-                input.focus();
-                ui.term.scrollTop = ui.term.scrollHeight;
+                const input = document.getElementById('nickname-input'); input.focus(); ui.term.scrollTop = ui.term.scrollHeight;
             };
             synth.speak(u);
         }
 
-        // Обработка ввода никнейма
         document.getElementById('nickname-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                e.preventDefault();
-                let val = this.value.trim();
-                if (val.length > 0) userNickname = val;
-                
+                e.preventDefault(); let val = this.value.trim(); if (val.length > 0) userNickname = val;
                 document.getElementById('login-block').style.display = 'none';
                 
-                // Добавляем строки аутентификации в историю
                 ui.history.innerHTML += `<div class="history-line"><span class="role-prefix role-ai">[AI]></span> ТРЕБУЕТСЯ ИДЕНТИФИКАЦИЯ СЕССИИ. ВВЕДИТЕ ПОЗЫВНОЙ.</div>`;
                 const shortNick = userNickname.substring(0, 3).toUpperCase();
                 ui.history.innerHTML += `<div class="history-line"><span class="role-prefix role-editor">[${shortNick}]></span> ${userNickname.toUpperCase()}</div>`;
                 
-                ui.curBlock.style.display = 'none';
-                document.getElementById('bottom-panel').style.display = 'flex';
-                
-                // Озвучиваем подтверждение доступа
+                ui.curBlock.style.display = 'none'; document.getElementById('bottom-panel').style.display = 'flex';
                 const grantTextSpeech = `Доступ разрешен, ${userNickname}. Начинаю передачу данных.`;
                 const grantTextVisual = `ДОСТУП РАЗРЕШЕН: ${userNickname.toUpperCase()}. СТАРТ СЕССИИ...`;
                 
-                ui.curBlock.style.display = 'block';
-                ui.prefix.className = 'role-prefix role-ai';
-                ui.prefix.innerText = 'AI_CORE>';
+                ui.curBlock.style.display = 'block'; ui.prefix.className = 'role-prefix role-ai'; ui.prefix.innerText = 'AI_CORE>';
                 startTyping(grantTextVisual);
 
-                let u2 = new SpeechSynthesisUtterance(grantTextSpeech);
-                u2.voice = getVoiceObject('ai');
-                u2.rate = cfgRate;
+                let u2 = new SpeechSynthesisUtterance(grantTextSpeech); u2.voice = getVoiceObject('ai'); u2.rate = cfgRate; u.volume = cfgVolume;
                 if (ui.selEditor.value === ui.selAi.value) u2.pitch = 1.3; else u2.pitch = cfgPitch;
-
-                u2.onend = () => {
-                     // Небольшая задержка перед стартом самого диалога
-                     setTimeout(() => playDialogue(0), 800);
-                };
-                synth.speak(u2);
+                u2.onend = () => { setTimeout(() => playDialogue(0), 800); }; synth.speak(u2);
             }
         });
 
+        // --- УПРАВЛЕНИЕ АУДИО ---
+        document.getElementById('btn-mute-bg').addEventListener('click', (e) => {
+            isBgMuted = !isBgMuted;
+            if (bgMasterGain) {
+                // Плавное затухание за 0.5 сек, чтобы избежать щелчка
+                bgMasterGain.gain.setTargetAtTime(isBgMuted ? 0 : 1, actx.currentTime, 0.1);
+            }
+            e.target.innerText = isBgMuted ? "[ 🔈 BG: OFF ]" : "[ 🔊 BG: ON ]";
+            e.target.style.opacity = isBgMuted ? "0.6" : "1";
+        });
+
+        document.getElementById('param-vol').addEventListener('input', (e) => {
+            cfgVolume = parseFloat(e.target.value);
+            document.getElementById('val-vol').innerText = Math.round(cfgVolume * 100) + '%';
+        });
 
         // --- ОСНОВНОЙ КОД ТЕРМИНАЛА ---
-        const synth = window.speechSynthesis;
-        let availableVoices = [];
-        let currentIndex = 0;
-        let isPlaying = false; 
-        let isPausedState = false; 
-        
-        let typingInterval = null;
-        let currentFullText = "";
-        let timeoutId = null; 
-
-        const cfgRate = 1.0; const cfgPitch = 1.0;
-        const cfgTypeSpeed = 40; const cfgPing = 0;       
+        const synth = window.speechSynthesis; let availableVoices = []; let currentIndex = 0; let isPlaying = false; let isPausedState = false; 
+        let typingInterval = null; let currentFullText = ""; let timeoutId = null; 
+        const cfgRate = 1.0; const cfgPitch = 1.0; const cfgTypeSpeed = 40; const cfgPing = 0;       
+        let cfgVolume = 1.0;
 
         const ui = {
-            history: document.getElementById('history-output'),
-            curBlock: document.getElementById('current-line-block'),
-            prefix: document.getElementById('current-role-prefix'),
-            text: document.getElementById('current-text-content'),
-            status: document.getElementById('status-bar'),
-            term: document.getElementById('terminal-container'),
-            btnStart: document.getElementById('btn-start'),
-            configPanel: document.getElementById('config-panel'),
-            selEditor: document.getElementById('select-editor'),
-            selAi: document.getElementById('select-ai')
+            history: document.getElementById('history-output'), curBlock: document.getElementById('current-line-block'),
+            prefix: document.getElementById('current-role-prefix'), text: document.getElementById('current-text-content'),
+            status: document.getElementById('status-bar'), term: document.getElementById('terminal-container'),
+            btnStart: document.getElementById('btn-start'), configPanel: document.getElementById('config-panel'),
+            selEditor: document.getElementById('select-editor'), selAi: document.getElementById('select-ai')
         };
 
         function populateVoiceLists() {
-            availableVoices = synth.getVoices();
-            if (availableVoices.length === 0) return;
-
+            availableVoices = synth.getVoices(); if (availableVoices.length === 0) return;
             ui.selEditor.innerHTML = ''; ui.selAi.innerHTML = '';
-
-            const sortedVoices = [...availableVoices].sort((a, b) => {
-                const aRu = a.lang.includes('ru'); const bRu = b.lang.includes('ru');
-                if (aRu && !bRu) return -1; if (!aRu && bRu) return 1; return 0;
-            });
-
+            const sortedVoices = [...availableVoices].sort((a, b) => { const aRu = a.lang.includes('ru'); const bRu = b.lang.includes('ru'); if (aRu && !bRu) return -1; if (!aRu && bRu) return 1; return 0; });
             sortedVoices.forEach(voice => {
-                const option1 = document.createElement('option');
-                const option2 = document.createElement('option');
+                const option1 = document.createElement('option'); const option2 = document.createElement('option');
                 const name = `${voice.name} (${voice.lang})`;
-                option1.textContent = name; option1.value = voice.name;
-                option2.textContent = name; option2.value = voice.name;
+                option1.textContent = name; option1.value = voice.name; option2.textContent = name; option2.value = voice.name;
                 ui.selEditor.appendChild(option1); ui.selAi.appendChild(option2);
             });
-
             loadSavedVoices(); 
         }
 
@@ -420,20 +479,13 @@
         if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = initVoices;
 
         function loadSavedVoices() {
-            const savedEd = localStorage.getItem('term_voice_editor');
-            const savedAi = localStorage.getItem('term_voice_ai');
-            
+            const savedEd = localStorage.getItem('term_voice_editor'); const savedAi = localStorage.getItem('term_voice_ai');
             const findBestVoice = (namesArray) => {
-                let best = availableVoices.find(v => v.lang.includes('ru') && 
-                    (v.name.includes('Natural') || v.name.includes('Online')) && 
-                    namesArray.some(n => v.name.toLowerCase().includes(n)));
-                if (!best) best = availableVoices.find(v => v.lang.includes('ru') && namesArray.some(n => v.name.toLowerCase().includes(n)));
-                return best;
+                let best = availableVoices.find(v => v.lang.includes('ru') && (v.name.includes('Natural') || v.name.includes('Online')) && namesArray.some(n => v.name.toLowerCase().includes(n)));
+                if (!best) best = availableVoices.find(v => v.lang.includes('ru') && namesArray.some(n => v.name.toLowerCase().includes(n))); return best;
             };
-
             if (savedEd && availableVoices.some(v => v.name === savedEd)) { ui.selEditor.value = savedEd; } 
             else { const maleVoice = findBestVoice(['dmitry', 'pavel', 'yuri']) || availableVoices.find(v => v.lang.includes('ru')); if (maleVoice) ui.selEditor.value = maleVoice.name; }
-
             if (savedAi && availableVoices.some(v => v.name === savedAi)) { ui.selAi.value = savedAi; } 
             else { const femaleVoice = findBestVoice(['svetlana', 'irina', 'darina', 'milena']) || availableVoices.find(v => v.lang.includes('ru') && v.name !== ui.selEditor.value) || availableVoices.find(v => v.lang.includes('ru')); if (femaleVoice) ui.selAi.value = femaleVoice.name; }
         }
@@ -441,120 +493,61 @@
         ui.selEditor.addEventListener('change', () => localStorage.setItem('term_voice_editor', ui.selEditor.value));
         ui.selAi.addEventListener('change', () => localStorage.setItem('term_voice_ai', ui.selAi.value));
 
-        document.getElementById('btn-config').addEventListener('click', () => {
-            ui.configPanel.style.display = (ui.configPanel.style.display === 'none' || ui.configPanel.style.display === '') ? 'block' : 'none';
-            ui.term.scrollTop = ui.term.scrollHeight;
-        });
+        document.getElementById('btn-config').addEventListener('click', () => { ui.configPanel.style.display = (ui.configPanel.style.display === 'none' || ui.configPanel.style.display === '') ? 'block' : 'none'; ui.term.scrollTop = ui.term.scrollHeight; });
 
-        function getVoiceObject(role) {
-            const voiceName = role === 'editor' ? ui.selEditor.value : ui.selAi.value;
-            return availableVoices.find(v => v.name === voiceName) || availableVoices[0];
-        }
+        function getVoiceObject(role) { return availableVoices.find(v => v.name === (role === 'editor' ? ui.selEditor.value : ui.selAi.value)) || availableVoices[0]; }
 
         function startTyping(text) {
-            clearInterval(typingInterval);
-            ui.text.innerText = "";
-            currentFullText = text;
-            let i = 0;
+            clearInterval(typingInterval); ui.text.innerText = ""; currentFullText = text; let i = 0;
             typingInterval = setInterval(() => {
-                if (i < text.length) {
-                    ui.text.innerText += text.charAt(i);
-                    i++;
-                    ui.term.scrollTop = ui.term.scrollHeight;
-                } else {
-                    clearInterval(typingInterval);
-                }
+                if (i < text.length) { ui.text.innerText += text.charAt(i); i++; ui.term.scrollTop = ui.term.scrollHeight; } else { clearInterval(typingInterval); }
             }, cfgTypeSpeed); 
         }
 
-        function stopTyping(instantShow = false) {
-            clearInterval(typingInterval);
-            if (instantShow) ui.text.innerText = currentFullText;
-        }
+        function stopTyping(instantShow = false) { clearInterval(typingInterval); if (instantShow) ui.text.innerText = currentFullText; }
 
         function playDialogue(index) {
             synth.cancel(); clearTimeout(timeoutId); stopTyping();
-
             if (index >= dialogueData.length) { resetState(''); return; }
-
-            isPlaying = true; isPausedState = false;
-            ui.btnStart.innerText = "[ ► EXEC ]";
-            ui.status.innerText = `SYS.STATUS: RUNNING (${index + 1}/${dialogueData.length})`;
-
-            const data = dialogueData[index];
-            const isEd = data.role === 'editor';
-            const shortNick = userNickname.substring(0, 3).toUpperCase();
-
-            // Динамическая замена слова "Редактор" на имя пользователя в тексте реплики
+            isPlaying = true; isPausedState = false; ui.btnStart.innerText = "[ ► EXEC ]"; ui.status.innerText = `SYS.STATUS: RUNNING (${index + 1}/${dialogueData.length})`;
+            const data = dialogueData[index]; const isEd = data.role === 'editor';
             const processedText = data.text.replace(/Редактор/gi, userNickname);
 
-            if (index > 0) addToHistory(dialogueData[index - 1]);
-            else ui.history.innerHTML = '';
-
+            if (index > 0) addToHistory(dialogueData[index - 1]); else ui.history.innerHTML = '';
             ui.prefix.className = 'role-prefix ' + (isEd ? 'role-editor' : 'role-ai');
             ui.prefix.innerText = isEd ? `${userNickname.toUpperCase()}_>` : 'AI_CORE>';
             
             startTyping(processedText);
             
-            currentUtterance = new SpeechSynthesisUtterance(processedText);
-            currentUtterance.voice = getVoiceObject(data.role);
+            currentUtterance = new SpeechSynthesisUtterance(processedText); 
+            currentUtterance.voice = getVoiceObject(data.role); 
             currentUtterance.rate = cfgRate;
-            
-            if (ui.selEditor.value === ui.selAi.value) { currentUtterance.pitch = isEd ? 0.75 : 1.3; } 
-            else { currentUtterance.pitch = cfgPitch; }
+            currentUtterance.volume = cfgVolume; // Применяем громкость
 
-            currentUtterance.onend = () => {
-                if (isPlaying && !isPausedState) {
-                    currentIndex++;
-                    timeoutId = setTimeout(() => playDialogue(currentIndex), cfgPing);
-                }
-            };
-            
-            currentUtterance.onerror = (e) => {
-                 if(isPlaying && !isPausedState) {
-                      synth.cancel(); timeoutId = setTimeout(() => playDialogue(currentIndex), 1000);
-                 }
-            };
+            if (ui.selEditor.value === ui.selAi.value) { currentUtterance.pitch = isEd ? 0.75 : 1.3; } else { currentUtterance.pitch = cfgPitch; }
 
+            currentUtterance.onend = () => { if (isPlaying && !isPausedState) { currentIndex++; timeoutId = setTimeout(() => playDialogue(currentIndex), cfgPing); } };
+            currentUtterance.onerror = (e) => { if (isPlaying && !isPausedState) { synth.cancel(); timeoutId = setTimeout(() => playDialogue(currentIndex), 1000); } };
             synth.speak(currentUtterance);
         }
 
         function addToHistory(data) {
-            const isEd = data.role === 'editor';
-            const shortNick = userNickname.substring(0, 3).toUpperCase();
+            const isEd = data.role === 'editor'; const shortNick = userNickname.substring(0, 3).toUpperCase();
             const processedText = data.text.replace(/Редактор/gi, userNickname);
-            
             const div = document.createElement('div'); div.className = 'history-line';
             div.innerHTML = `<span class="role-prefix ${isEd ? 'role-editor' : 'role-ai'}">${isEd ? `[${shortNick}]>` : '[AI]>'}</span> ${processedText}`;
             ui.history.appendChild(div); ui.term.scrollTop = ui.term.scrollHeight;
         }
 
         function resetState(msg) {
-            synth.cancel(); clearTimeout(timeoutId); stopTyping();
-            currentIndex = 0; isPlaying = isPausedState = false;
+            synth.cancel(); clearTimeout(timeoutId); stopTyping(); currentIndex = 0; isPlaying = isPausedState = false;
             ui.history.innerHTML = ''; ui.prefix.className = 'role-prefix'; ui.prefix.innerText = '> ';
             ui.text.innerText = msg; ui.status.innerText = "SYS.STATUS: STANDBY"; ui.btnStart.innerText = "[ ► EXEC ]";
         }
 
-        ui.btnStart.addEventListener('click', () => {
-            if (isPausedState) {
-                ui.status.innerText = "SYS.STATUS: RESUMING..."; playDialogue(currentIndex);
-            } else if (!isPlaying) {
-                ui.configPanel.style.display = 'none'; playDialogue(currentIndex);
-            }
-        });
-
-        document.getElementById('btn-pause').addEventListener('click', () => {
-            if (isPlaying && !isPausedState) {
-                synth.cancel(); clearTimeout(timeoutId); stopTyping(true);
-                isPausedState = true; ui.status.innerText = "SYS.STATUS: *** PAUSED ***"; ui.btnStart.innerText = "[ ► RESUME ]";
-            }
-        });
-
-        document.getElementById('btn-reset').addEventListener('click', () => {
-            resetState(''); ui.configPanel.style.display = 'none';
-        });
-
+        ui.btnStart.addEventListener('click', () => { if (isPausedState) { ui.status.innerText = "SYS.STATUS: RESUMING..."; playDialogue(currentIndex); } else if (!isPlaying) { ui.configPanel.style.display = 'none'; playDialogue(currentIndex); } });
+        document.getElementById('btn-pause').addEventListener('click', () => { if (isPlaying && !isPausedState) { synth.cancel(); clearTimeout(timeoutId); stopTyping(true); isPausedState = true; ui.status.innerText = "SYS.STATUS: *** PAUSED ***"; ui.btnStart.innerText = "[ ► RESUME ]"; } });
+        document.getElementById('btn-reset').addEventListener('click', () => { resetState(''); ui.configPanel.style.display = 'none'; });
     </script>
 </body>
 </html>
